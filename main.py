@@ -11,27 +11,21 @@ stop_words = set(stopwords.words('english'))
 
 def tokenize(text, remove_stop_words = False):
     text = text.lower()
-
-    # Remove numbers
+    # remove numbers
     text = re.sub(r'\d+', '', text)
-
-    # Replace punctuation with spaces, except for apostrophes
+    # replace punctuation with spaces, except for apostrophes
     text = re.sub(r'[^\w\s\']', ' ', text)
-
-    # Normalize whitespace
+    # normalize whitespace
     text = re.sub(r'\s+', ' ', text).strip()
-
-    # Handle contractions (simplified approach)
+    # handle contractions (simplified approach)
     text = re.sub(r"n't", " not", text)
     text = re.sub(r"'ve", " have", text)
     text = re.sub(r"'re", " are", text)
     text = re.sub(r"'ll", " will", text)
     text = re.sub(r"'m", " am", text)
-
-    # Split on whitespace
+    # split on whitespace
     tokens = text.split()
-
-    # Remove stop words and apply stemming
+    # remove stop words and apply stemming
     if remove_stop_words:
         tokens = [stemmer.stem(token) for token in tokens if token not in stop_words and re.search(r'\w', token)]
     else:
@@ -44,8 +38,7 @@ def unknown_word_handle(tokens):
     token_freq = defaultdict(int)
     for token in tokens:
         token_freq[token] += 1
-
-    # Step 2: Replace low-frequency tokens with the UNK_TOKEN
+    # replace low-frequency tokens with the UNK_TOKEN
     tokens = [token if token_freq[token] > UNK_THRESHOLD else UNK_TOKEN for token in tokens]
     return tokens
 
@@ -72,13 +65,12 @@ def unigram_and_bigram_model(tokens, smoothing='laplace', k=1):
     total_tokens = len(tokens)
     vocab_size = len(set(tokens))
     tokens = unknown_word_handle(tokens)
-    # Count unigrams and bigrams in one pass
+    # count unigrams and bigrams in one pass
     for i in range(len(tokens) - 1):
         unigram_counts[tokens[i]] += 1
         bigram = (tokens[i], tokens[i + 1])
         bigram_counts[bigram] += 1
-
-    # Add the last token for unigram count
+    # add the last token for unigram count (because above loop doest add it)
     unigram_counts[tokens[-1]] += 1
 
     unigram_model = {}
@@ -95,10 +87,10 @@ def unigram_and_bigram_model(tokens, smoothing='laplace', k=1):
     return unigram_model, bigram_model
 
 def calculate_perplexity(tokens, model, ngram_type='bigram'):
-    N = len(tokens)  # Total number of tokens
+    N = len(tokens)
     log_sum = 0
-
-    for i in range(1, N):  # Start from index 1 because for bigrams, we need a previous token
+    # starting from index 1 because for bigrams, we need a previous token
+    for i in range(1, N):
         if ngram_type == 'bigram':
             prev_token = tokens[i - 1]
             token = tokens[i]
@@ -113,14 +105,14 @@ def calculate_perplexity(tokens, model, ngram_type='bigram'):
         elif ngram_type == 'unigram':
             token = tokens[i]
 
-            # Get unigram probability
+            # get unigram probability
             if token in model:
                 prob = model[token]
             else:
                 prob = model['<UNK>']
         log_sum += -math.log(prob)
 
-    # Perplexity formula
+    # perplexity formula
     perplexity = math.exp(log_sum / N)
     return perplexity
 
@@ -144,16 +136,16 @@ if __name__ == '__main__':
         validation_tokens.extend(tokens)
 
     unsmoothed_unigram, unsmoothed_bigram = unigram_and_bigram_model(all_tokens, False)
-    # Build unigram and bigram models from the tokens
+    # build unigram and bigram models from the tokens
     laplace_unigram_model, laplace_bigram_model = unigram_and_bigram_model(all_tokens, 'laplace', 1)
 
     addk_unigram_model_1, addk_bigram_model_1 = unigram_and_bigram_model(all_tokens, 'add-k', 0.01)
     addk_unigram_model_2, addk_bigram_model_2 = unigram_and_bigram_model(all_tokens, 'add-k', 0.1)
 
-    # Compute and print perplexity for unsmoothed models (unigram and bigram)
+    # compute and print perplexity for unsmoothed models (unigram and bigram)
     print("\n--- Unsmoothened Model Perplexities ---")
 
-    # Training set perplexity
+    # training set perplexity
     unsmoothed_unigram_perplexity_train = calculate_perplexity(all_tokens, unsmoothed_unigram, ngram_type='unigram')
     print(f"Unigram Perplexity on Train set: {unsmoothed_unigram_perplexity_train:.6f}")
 
@@ -167,48 +159,48 @@ if __name__ == '__main__':
     unsmoothed_bigram_perplexity_val = calculate_perplexity(validation_tokens, unsmoothed_bigram, ngram_type='bigram')
     print(f"Bigram Perplexity on Validation set: {unsmoothed_bigram_perplexity_val:.6f}")
 
-    # Compute and print perplexity for Laplace-smoothed models (unigram and bigram)
+    # compute and print perplexity for Laplace-smoothed models (unigram and bigram)
     print("\n--- Laplace-Smoothened Model Perplexities ---")
 
-    # Training set perplexity
+    # training set perplexity
     laplace_unigram_perplexity_train = calculate_perplexity(all_tokens, laplace_unigram_model, ngram_type='unigram')
     print(f"Unigram Perplexity on Train set: {laplace_unigram_perplexity_train:.6f}")
 
     laplace_bigram_perplexity_train = calculate_perplexity(all_tokens, laplace_bigram_model, ngram_type='bigram')
     print(f"Bigram Perplexity on Train set: {laplace_bigram_perplexity_train:.6f}")
 
-    # Validation set perplexity
+    # validation set perplexity
     laplace_unigram_perplexity_val = calculate_perplexity(validation_tokens, laplace_unigram_model, ngram_type='unigram')
     print(f"Unigram Perplexity on Validation set: {laplace_unigram_perplexity_val:.6f}")
 
     laplace_bigram_perplexity_val = calculate_perplexity(validation_tokens, laplace_bigram_model, ngram_type='bigram')
     print(f"Bigram Perplexity on Validation set: {laplace_bigram_perplexity_val:.6f}")
 
-    # Compute and print perplexity for Add-K smoothed models (unigram and bigram)
+    # compute and print perplexity for Add-K smoothed models (unigram and bigram)
     print("\n--- Add-K Smoothened Model Perplexities (k=0.01) ---")
 
-    # Training set perplexity
+    # training set perplexity
     addk_unigram_perplexity_train = calculate_perplexity(all_tokens, addk_unigram_model_1, ngram_type='unigram')
     print(f"Unigram Perplexity on Train set: {addk_unigram_perplexity_train:.6f}")
 
     addk_bigram_perplexity_train = calculate_perplexity(all_tokens, addk_bigram_model_1, ngram_type='bigram')
     print(f"Bigram Perplexity on Train set: {addk_bigram_perplexity_train:.6f}")
 
-    # Validation set perplexity
+    # validation set perplexity
     addk_unigram_perplexity_val = calculate_perplexity(validation_tokens, addk_unigram_model_1, ngram_type='unigram')
     print(f"Unigram Perplexity on Validation set: {addk_unigram_perplexity_val:.6f}")
 
     addk_bigram_perplexity_val = calculate_perplexity(validation_tokens, addk_bigram_model_1, ngram_type='bigram')
     print(f"Bigram Perplexity on Validation set: {addk_bigram_perplexity_val:.6f}")
     print("\n--- Add-K Smoothened Model Perplexities (k=0.1) ---")
-    # Training set perplexity
+    # training set perplexity
     addk_unigram_perplexity_train = calculate_perplexity(all_tokens, addk_unigram_model_2, ngram_type='unigram')
     print(f"Unigram Perplexity on Train set: {addk_unigram_perplexity_train:.6f}")
 
     addk_bigram_perplexity_train = calculate_perplexity(all_tokens, addk_bigram_model_2, ngram_type='bigram')
     print(f"Bigram Perplexity on Train set: {addk_bigram_perplexity_train:.6f}")
 
-    # Validation set perplexity
+    # validation set perplexity
     addk_unigram_perplexity_val = calculate_perplexity(validation_tokens, addk_unigram_model_2, ngram_type='unigram')
     print(f"Unigram Perplexity on Validation set: {addk_unigram_perplexity_val:.6f}")
 
